@@ -9,6 +9,9 @@ SAMBA_USB_INTERFACE = 1
 class SambaOpenError(Exception):
     """An error occured while opening a connection to SAM-BA"""
 
+class SambaWriteError(Exception):
+    """An error occured writing a buffer via SAM-BA""" 
+
 def _command(code, address):
     return '%c%08X#' % (code, address)
 
@@ -30,6 +33,7 @@ class SambaBrick(object):
             ATMEL_VENDOR_ID, SAMBA_PRODUCT_ID, timeout=timeout)
         if not self.usb:
             raise SambaOpenError("Could not find a SAM-BA brick to connect to")
+        
         self.usb.open(SAMBA_USB_INTERFACE)
 
         # Initial SAM-BA handshake.
@@ -56,7 +60,9 @@ class SambaBrick(object):
 
     def write_buffer(self, address, data):
         self.usb.write(_command2('S', address, len(data)))
-        self.usb.write(data)
+        ret = self.usb.write(data)
+        if ret != len(data):
+            raise SambaWriteError()
 
     def _read_common(self, code, address, size, struct_code):
         assert size in (1,2,4)
