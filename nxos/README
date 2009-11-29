@@ -32,8 +32,10 @@ of Python (www.python.org). You will also need libusb and the python-pyusb packa
 needed by PyNXT to upload an NxOS kernel to the brick.
 
   * Python >= 2.4
-  * libusb
-  * python-pyusb
+  * libusb                 (http://www.libusb.org)
+  * python-pyusb           (http://sourceforge.net/projects/pyusb)
+  * scons                  (http://www.scons.org)
+  * Python Imaging Library (http://www.pythonware.com/products/pil/) 
 
 You will also need a working ARM cross-compilation chain. To ease
 the process, you will find in the scripts/ directory an automatic
@@ -56,17 +58,17 @@ won't be able to communicate with the brick via USB.
 To build NxOS, simply go inside the nxos/ subdirectory (the one
 that contains base/, systems/, ...) and type:
 
-  % scons appkernels=tests
+  % scons appkernels=examples/display
 
 Finally, connect the brick to your computer with the USB cable, and do:
 
-  % ./boot_firmware tests samba
+  % ./boot_firmware
 
 The script will then ask you confirmation, and then upload the firmware
 to the brick's RAM (for ROM flashing mode, change 'samba' for 'rom').
 
-To build and try another kernel, simply replace 'tests' by the name
-of the application kernel you want to build. The available kernels
+To build and try another kernel, simply replace 'examples/display' by the 
+name of the application kernel you want to build. The available kernels
 are the directory in systems/. You can also build several appkernels at
 once by using a comma-separated list.
 
