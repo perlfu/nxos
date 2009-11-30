@@ -236,5 +236,5 @@ else:
     appkernels = env['appkernels']
 systems_to_build = ['systems/%s/SConscript' % x for x in appkernels]
 SConscript(['base/SConscript'] + systems_to_build, 'env CheckTool')
-env.Command('nxos.a', [env['NXOS_BASEPLATE']],
+env.Command('libnxos.a', [env['NXOS_BASEPLATE']],
             '$AR -r $TARGET $SOURCES')
