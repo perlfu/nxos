@@ -83,6 +83,8 @@ typedef struct bt_version {
  */
 void nx_bt_init(void);
 
+void nx_bt_reset(void);
+
 bt_state_t nx_bt_get_state(void);
 
 
@@ -90,8 +92,8 @@ bt_state_t nx_bt_get_state(void);
  * @param[in] name Max 16 car. !
  */
 void nx_bt_set_friendly_name(char *name);
+bool nx_bt_get_discoverable(void);
 void nx_bt_set_discoverable(bool d);
-
 
 /**
  * @param timeout unit: 1.28s ; min : 0x01 (1.28s) ; max: 0x30 (61.44s)
@@ -123,6 +125,13 @@ bt_return_value_t nx_bt_remove_known_device(U8 dev_addr[BT_ADDR_SIZE]);
  * @return the firmware version
  */
 bt_version_t nx_bt_get_version(void);
+
+/**
+ * @param[out] addr will be filled in with the device addr. 
+ *             The area must have at least a size of (BT_ADDR_SIZE).
+ * @return success, false if failure
+ */
+bool nx_bt_get_local_addr(U8 *addr);
 
 /**
  * @param[out] name will be filled in with the friendly name. An '\0' will be appended,
@@ -228,6 +237,20 @@ U32 nx_bt_stream_data_read(void);
  * Close a currently opened stream.
  */
 void nx_bt_stream_close(void);
+
+
+/**
+ * Read the contents of the persistent storage byte.
+ * @param data must have room for 2 bytes.
+ * @return success or fail
+ */
+bool nx_bt_get_brick_status_byte(U8 *data);
+
+/**
+ * Write the contents of the persistent storage byte.
+ * @return success or fail
+ */
+bool nx_bt_set_brick_status_byte(U8 value1, U8 value2);
 
 
 /* to remove */

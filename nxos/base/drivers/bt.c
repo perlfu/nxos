@@ -11,6 +11,7 @@
 #include "base/types.h"
 #include "base/util.h"
 #include "base/display.h"
+#include "base/drivers/aic.h"
 #include "base/drivers/systick.h"
 #include "base/drivers/_uart.h"
 
@@ -61,7 +62,7 @@ typedef enum {
   BT_MSG_SET_FRIENDLY_NAME = 0x21,
   BT_MSG_GET_LINK_QUALITY = 0x23,
   BT_MSG_SET_FACTORY_SETTINGS = 0x25,
-  BT_MSG_GET_LOCAL_ADDR = 0x26,
+  BT_MSG_GET_LOCAL_ADDR = 0x27,
   BT_MSG_GET_FRIENDLY_NAME = 0x29,
   BT_MSG_GET_DISCOVERABLE = 0x2A,
   BT_MSG_GET_PORT_OPEN = 0x2B,
@@ -99,7 +100,7 @@ typedef enum {
   BT_MSG_GET_FRIENDLY_NAME_RESULT = 0x2C,
   BT_MSG_GET_DISCOVERABLE_RESULT = 0x2D,
   BT_MSG_GET_PORT_OPEN_RESULT = 0x2E,
-  BT_MSG_GET_VERSION_RESULT = 0X30,
+  BT_MSG_GET_VERSION_RESULT = 0x30,
   BT_MSG_GET_BRICK_STATUS_BYTE_RESULT = 0x31,
   BT_MSG_SET_BRICK_STATUS_BYTE_RESULT = 0x32,
   BT_MSG_OPERATING_MODE_RESULT = 0x37,
@@ -126,6 +127,12 @@ static const U8 bt_msg_get_version[] = {
   0xD1  /* checksum (lo) */
 };
 
+static const U8 bt_msg_get_discoverable[] = {
+  0x03,
+  BT_MSG_GET_DISCOVERABLE,
+  0xFF,
+  0xD6
+};
 
 static const U8 bt_msg_set_discoverable_true[] = {
   0x04, /* length */
@@ -160,6 +167,13 @@ static const U8 bt_msg_dump_list[] = {
 };
 
 
+static const U8 bt_msg_get_local_addr[] = {
+  0x03,
+  BT_MSG_GET_LOCAL_ADDR,
+  0xFF,
+  0xD9
+};
+
 static const U8 bt_msg_get_friendly_name[] = {
   0x03,
   BT_MSG_GET_FRIENDLY_NAME,
@@ -190,6 +204,13 @@ static const U8 bt_msg_refuse_connection[] = {
   0x00,
   0xFF,
   0xF7
+};
+
+static const U8 bt_msg_get_brick_status_byte[] = {
+  0x03,
+  BT_MSG_GET_BRICK_STATUS_BYTE,
+  0xFF,
+  0xCD
 };
 
 
@@ -457,6 +478,19 @@ void nx_bt_init(void)
   USB_SEND("nx_bt_init() finished");
 }
 
+void nx_bt_reset(void)
+{
+  nx_bt_stream_close ();
+  nx__uart_set_callback(NULL);
+
+  nx_aic_disable (AT91C_ID_US1);
+  nx_systick_wait_ms(5);
+
+  *AT91C_PIOA_CODR = BT_RST_PIN;
+  nx_systick_wait_ms(100);
+
+  nx_bt_init();
+}
 
 
 void nx_bt_set_friendly_name(char *name)
@@ -480,6 +514,17 @@ void nx_bt_set_friendly_name(char *name)
   do {
     nx__uart_write(packet, 20);
   } while(!bt_wait_msg(BT_MSG_SET_FRIENDLY_NAME_ACK));
+}
+
+bool nx_bt_get_discoverable(void)
+{
+  nx__uart_write(bt_msg_get_discoverable, sizeof(bt_msg_get_discoverable));
+  
+  if (bt_wait_msg(BT_MSG_GET_DISCOVERABLE_RESULT)) {
+    return bt_state.args[0] == 1 ? TRUE : FALSE;
+  } else {
+    return FALSE;
+  }
 }
 
 
@@ -656,6 +701,25 @@ bt_version_t nx_bt_get_version(void)
   return ver;
 }
 
+bool nx_bt_get_local_addr(U8 *addr)
+{
+  int i;
+
+  nx__uart_write(bt_msg_get_local_addr, sizeof(bt_msg_get_local_addr));
+
+  if (bt_wait_msg(BT_MSG_GET_LOCAL_ADDR_RESULT)) {
+
+    for (i = 0 ;
+         i < BT_ARGS_BUFSIZE && i < BT_ADDR_SIZE ;
+         i++)
+      addr[i] = bt_state.args[i];
+
+    return TRUE;
+  } else {
+    return FALSE;
+  }
+
+}
 
 int nx_bt_get_friendly_name(char *name)
 {
@@ -939,6 +1003,41 @@ void nx_bt_stream_close(void)
   bt_state.state = BT_STATE_WAITING;
 }
 
+
+bool nx_bt_get_brick_status_byte(U8 *data)
+{
+  nx__uart_write(bt_msg_get_brick_status_byte, sizeof(bt_msg_get_brick_status_byte));
+  
+  if (bt_wait_msg(BT_MSG_GET_BRICK_STATUS_BYTE_RESULT)) {
+    data[0] = bt_state.args[0];
+    data[1] = bt_state.args[1];
+    return TRUE;
+  } else {
+    return FALSE;
+  }
+}
+
+bool nx_bt_set_brick_status_byte(U8 value1, U8 value2)
+{
+  U8 packet[6] = { 0 };
+
+  packet[0] = 5; /* length */
+  packet[1] = BT_MSG_SET_BRICK_STATUS_BYTE;
+  packet[2] = value1;
+  packet[3] = value2;
+  
+  bt_set_checksum(packet+1, 5);
+
+  do {
+    nx__uart_write(packet, 6);
+  } while(!bt_wait_msg(BT_MSG_SET_BRICK_STATUS_BYTE_RESULT));
+
+  if (bt_state.args[0] == 0x50) {
+    return TRUE;
+  } else {
+    return FALSE;
+  }
+}
 
 
 /* to remove: */
